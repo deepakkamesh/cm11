@@ -1,8 +1,9 @@
 package main
 
 import (
-	"cm11"
 	"fmt"
+
+	"github.com/deepakkamesh/cm11"
 )
 
 func main() {
@@ -11,9 +12,6 @@ func main() {
 	if err := c.Init(); err != nil {
 		fmt.Printf("Got Error %s", err)
 	}
-
-	fmt.Print("mainloop")
-	//	c.SendCommand("C", "4", "On")
 
 	for {
 		v := <-oc

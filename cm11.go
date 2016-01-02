@@ -151,18 +151,19 @@ func (m *Device) run() {
 
 		// Line is free to write commands.
 		if err == io.EOF {
-			log.Printf("waiting..\n")
 			select {
 			case o := <-m.in:
 				// Write house+device code.
 				b := m.houseCode[o.HouseCode]<<4 + m.deviceCode[o.DeviceCode]
 				if err := m.writeCmd([]byte{0x04, b}); err != nil {
-					log.Printf("command %s%s %s", o.HouseCode, o.DeviceCode, err)
+					log.Printf("command %s%s%s %s", o.HouseCode, o.DeviceCode, o.FunctionCode, err)
+					continue
 				}
 				// Write house+function code.
 				b = m.houseCode[o.HouseCode]<<4 + m.functionCode[o.FunctionCode]
 				if err := m.writeCmd([]byte{0x06, b}); err != nil {
-					log.Printf("command %s%s %s", o.HouseCode, o.DeviceCode, err)
+					log.Printf("command %s%s%s %s", o.HouseCode, o.DeviceCode, o.FunctionCode, err)
+					continue
 				}
 				log.Printf("sent cm11 command %s%s-%s", o.HouseCode, o.DeviceCode, o.FunctionCode)
 				continue
@@ -187,9 +188,9 @@ func (m *Device) run() {
 						DeviceCode:   m.deviceCodeR[(data[i+1]<<4)>>4],
 						FunctionCode: m.functionCodeR[(data[i+2]<<4)>>4],
 					}
-					i += 1 // Skip the next byte.
 					log.Printf("recieved cm11 command %s%s-%s",
 						m.houseCodeR[data[i+1]>>4], m.deviceCodeR[(data[i+1]<<4)>>4], m.functionCodeR[(data[i+2]<<4)>>4])
+					i += 1 // Skip the next byte.
 				}
 			}
 		}
