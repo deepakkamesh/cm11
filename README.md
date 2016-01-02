@@ -1,5 +1,9 @@
 # cm11_driver_golang
-x10 CM11 driver written in golang. 
+x10 CM11 driver package written in golang.
+x10 protocol specification http://wanderingsamurai.net/electronics/cm11a-x10-protocol-document
+
+## Dependency
+This requires the serial package https://github.com/tarm/serial
 
 ## Usage 
 ```go
