@@ -23,6 +23,7 @@ type Device struct {
 	serial        *serial.Port
 	out           chan ObjState
 	in            chan ObjState
+	err           chan error
 	houseCode     map[string]byte
 	deviceCode    map[string]byte
 	functionCode  map[string]byte
@@ -46,7 +47,7 @@ func (m *Device) Init() error {
 	return nil
 }
 
-func New(serialPort string, c chan ObjState) *Device {
+func New(serialPort string, c chan ObjState, errC chan error) *Device {
 
 	houseCode := map[string]byte{
 		"A": 0x06,
@@ -124,6 +125,7 @@ func New(serialPort string, c chan ObjState) *Device {
 		serialPort:    serialPort,
 		out:           c,
 		in:            make(chan ObjState, 10),
+		err:           errC,
 		houseCode:     houseCode,
 		deviceCode:    deviceCode,
 		functionCode:  functionCode,
@@ -156,16 +158,16 @@ func (m *Device) run() {
 				// Write house+device code.
 				b := m.houseCode[o.HouseCode]<<4 + m.deviceCode[o.DeviceCode]
 				if err := m.writeCmd([]byte{0x04, b}); err != nil {
-					log.Printf("command %s%s%s %s", o.HouseCode, o.DeviceCode, o.FunctionCode, err)
+					m.err <- fmt.Errorf("command %s%s-%s %s", o.HouseCode, o.DeviceCode, o.FunctionCode, err)
 					continue
 				}
 				// Write house+function code.
 				b = m.houseCode[o.HouseCode]<<4 + m.functionCode[o.FunctionCode]
 				if err := m.writeCmd([]byte{0x06, b}); err != nil {
-					log.Printf("command %s%s%s %s", o.HouseCode, o.DeviceCode, o.FunctionCode, err)
+					m.err <- fmt.Errorf("command %s%s-%s %s", o.HouseCode, o.DeviceCode, o.FunctionCode, err)
 					continue
 				}
-				log.Printf("sent cm11 command %s%s-%s", o.HouseCode, o.DeviceCode, o.FunctionCode)
+				//log.Printf("sent cm11 command %s%s-%s", o.HouseCode, o.DeviceCode, o.FunctionCode)
 				continue
 			case <-tick.C:
 				continue
@@ -176,7 +178,7 @@ func (m *Device) run() {
 		if buf[0] == 0x5A {
 			data, err := m.readCmd()
 			if err != nil {
-				log.Printf("skipping bad data transmission due to %s", err)
+				m.err <- fmt.Errorf("skipping bad data transmission due to %s", err)
 				continue
 			}
 			// Translate the transmission and send on channel.
@@ -188,8 +190,8 @@ func (m *Device) run() {
 						DeviceCode:   m.deviceCodeR[(data[i+1]<<4)>>4],
 						FunctionCode: m.functionCodeR[(data[i+2]<<4)>>4],
 					}
-					log.Printf("recieved cm11 command %s%s-%s",
-						m.houseCodeR[data[i+1]>>4], m.deviceCodeR[(data[i+1]<<4)>>4], m.functionCodeR[(data[i+2]<<4)>>4])
+					//log.Printf("recieved cm11 command %s%s-%s",
+					//m.houseCodeR[data[i+1]>>4], m.deviceCodeR[(data[i+1]<<4)>>4], m.functionCodeR[(data[i+2]<<4)>>4])
 					i += 1 // Skip the next byte.
 				}
 			}
